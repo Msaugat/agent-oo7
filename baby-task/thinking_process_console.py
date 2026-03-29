@@ -1,5 +1,6 @@
 import ollama
 from colorama import init, Fore, Style
+from export_chat import save_chat
 
 init(autoreset=True)
 
@@ -12,12 +13,20 @@ def thinking_process(query):
         return "Error in calculation"
 
 # Warm-up
-print(Fore.YELLOW + "Loading model...")
-_ = ollama.chat(model=model, messages=[{"role": "user", "content": "Hello"}])
+warmed_up =False
 print("Model loaded and ready!\n")
 
 while True:
     user_input = input("Ask me: ")
+
+    if not warmed_up:
+        print(Fore.YELLOW + "Warming up model...")
+        _ = ollama.chat(
+            model=model,
+            messages=[{"role": "user", "content": ""}]
+        )
+        warmed_up = True
+
     if user_input.lower() in ["exit", "quit", "e", "q"]:
         print("Goodbye!")
         break
@@ -35,7 +44,7 @@ while True:
         model=model,
         messages=[{"role": "user", "content": user_input}],
         stream=True,
-        think= True,
+        think= False,
         options={"num_ctx": 32768}  # Qwen 3.5 supports up to 262K context
     )
 
@@ -60,5 +69,8 @@ while True:
                 print(Fore.GREEN + "Final Answer:\n")
                 in_thinking = False
             print(chunk.message.content, end="", flush=True)
+            full_response += chunk.message.content
 
     print("\n")
+
+    save_chat(user_input, full_response)
