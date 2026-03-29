@@ -22,3 +22,5 @@ dist/
 # Mac OS / Windows system files
 .DS_Store
 Thumbs.db
+
+chat_history.*
