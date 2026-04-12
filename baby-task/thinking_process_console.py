@@ -5,7 +5,7 @@ from commands_personality import handle_user_input, SYSTEM_PROMPTS
 
 init(autoreset=True)
 
-model = "qwen3.5"
+model = "qwen2.5:1.5b"
 current_personality = "default"
 conversation_history = load_chat() # load past chats
 
