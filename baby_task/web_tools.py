@@ -190,7 +190,7 @@ def format_search_results(results: list, topic_hint: str = "") -> str:
     if not results:
         return "⚠️ No search results found."
     
-    lines = [f"🔍 SEARCH RESULTS FOR: {topic_hint or 'User Query'}\n" + "="*60]
+    lines = [f" SEARCH RESULTS FOR: {topic_hint or 'User Query'}\n" + "="*60]
     for i, r in enumerate(results, 1):
         lines.append(f"\n#{i}. {r['title']}")
         lines.append(f"    URL: {r['url']}")
