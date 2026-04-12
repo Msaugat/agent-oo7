@@ -5,102 +5,79 @@ from commands_personality import handle_user_input, SYSTEM_PROMPTS
 
 init(autoreset=True)
 
-model = "qwen2.5:1.5b"
+MODEL = "qwen2.5:1.5b" 
 current_personality = "default"
-conversation_history = load_chat() # load past chats
+conversation_history = load_chat()
+warmed_up = False
 
-def thinking_process(query):
-    try:
-        return str(eval(query))
-    except:
-        return "Error in calculation"
-
-# Warm-up
-warmed_up =False
-print("Model loaded and ready!\n")
+print(f" Model ready: {MODEL}\n")
 
 while True:
-    user_input = input("Ask me: ")
-
-    if user_input.lower() in ["exit", "quit", "e", "q"]:
-        print("Goodbye!")
+    try:
+        user_input = input(f"{Fore.CYAN}You: {Style.RESET_ALL}").strip()
+    except (EOFError, KeyboardInterrupt):
         break
 
+    if not user_input:
+        continue
+    if user_input.lower() in ("exit", "quit", "e", "q"):
+        print("👋 Goodbye!")
+        break
+
+    # Handle slash commands
     if user_input.startswith("/"):
-        result = handle_user_input(user_input, current_personality, conversation_history)
-        if len(result) == 2:
-            current_personality, conversation_history = result
-        elif len(result) == 3:
-            current_personality, conversation_history, messages = result
-            print(Fore.GREEN + f"Added message with {current_personality} personality.")
+        current_personality, conversation_history = handle_user_input(
+            user_input, current_personality, conversation_history
+        )
         continue
 
-    # Calculator detection
-    if any(op in user_input for op in ["+", "-", "*", "/"]):
-        result = thinking_process(user_input)
-        print("Answer:", result)
-        continue
+    # Build context (limit history to save RAM)
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS[current_personality]}]
+    messages.extend(conversation_history[-12:])
+    messages.append({"role": "user", "content": user_input})
 
-
-    conversation_history.append({"role": "user","content": user_input})
-
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPTS[current_personality]},
-        *conversation_history
-    ]
-
+    # Warm-up
     if not warmed_up:
         print(Fore.YELLOW + "Warming up model...")
-        _ = ollama.chat(
-            model=model,
-            messages=[{"role": "user", "content": ""}]
+        try:
+            ollama.chat(model=MODEL, messages=[{"role": "user", "content": "hi"}])
+            warmed_up = True
+        except Exception:
+            pass
+
+    print(Fore.RED + "\n AI is processing...\n")
+    try:
+        stream = ollama.chat(
+            model=MODEL,
+            messages=messages,
+            stream=True,
+            options={"num_ctx": 4096}
         )
-        warmed_up = True
-    
 
+        full_response = ""
+        in_thinking = False
 
-    print(Fore.RED + "\nAI is processing...\n")
+        #  REAL-TIME THINKING PARSER
+        for chunk in stream:
+            content = chunk.message.content
+            if not content:
+                continue
 
-    # Stream the response to show thinking in real-time
-    stream = ollama.chat(
-        model=model,
-        messages= messages,
-        stream=True,
-        think= False,
-        options={"num_ctx": 32768}  # Qwen 3.5 supports up to 262K context
-    )
-
-    full_response = ""
-    thinking_content = ""
-    answer_content = ""
-    in_thinking = False
-    thinking_started = False
-    answer_started = False
-
-
-    # Process the stream
-    for chunk in stream:
-        if hasattr(chunk.message, 'thinking') and chunk.message.thinking:
-            if not in_thinking:
-                print(Fore.YELLOW + "_______ Thinking Process:________\n")
-                in_thinking = True
-            print(Fore.CYAN + chunk.message.thinking, end="", flush=True)
-        elif hasattr(chunk.message, 'content') and chunk.message.content:
+            # Print live based on state
             if in_thinking:
-                print("\n" + "-"*50 + "\n")
-                print(Fore.GREEN + "Final Answer:\n")
-                in_thinking = False
-            print(chunk.message.content, end="", flush=True)
-            full_response += chunk.message.content
+                print(Fore.CYAN + content, end="", flush=True)
+            else:
+                print(Fore.WHITE + content, end="", flush=True)
 
-    print("\n")
+            full_response += content
 
-    conversation_history.append({
-        "role": "assistant",
-        "content": full_response
-    })
-    
-    MAX_HISTORY = 20
-    conversation_history = conversation_history[-MAX_HISTORY:]
+        print(Style.RESET_ALL + "\n")
 
-    save_chat(user_input, full_response)
+        # Save clean response
+        clean_response = full_response.replace("<think>", "").replace("</think>", "")
+        conversation_history.append({"role": "assistant", "content": clean_response})
+        conversation_history = conversation_history[-20:]
+        save_chat(user_input, clean_response)
+
+    except Exception as e:
+        print(Fore.RED + f"\n Generation failed: {e}")
