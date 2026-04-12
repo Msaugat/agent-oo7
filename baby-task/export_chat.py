@@ -11,10 +11,10 @@ def save_chat(user_msg, ai_response):
         "user": user_msg,
         "ai": ai_response
     }
-    try:
+    try: 
         with open(CHAT_FILE, "r") as f:
             history = json.load(f)
-    except:
+    except (FileNotFoundError, json.JSONDecodeError):
         history = []
     
     history.append(entry)
@@ -26,27 +26,15 @@ def load_chat():
     try:
         with open(CHAT_FILE, "r") as f:
             data = json.load(f)
-    except:
+    except (FileNotFoundError, json.JSONDecodeError):
         return []
 
     history = []
     for entry in data:
-        if "user" in entry and "ai" in entry:
-            user = entry["user"]
-            ai = entry["ai"]
-
-        elif "user_message" in entry and "ai_response" in entry:
-            user = entry["user_message"]
-            ai = entry["ai_response"]
-
-        else:
-            continue  # skip broken entries
-
+        user = entry.get("user") or entry.get("user_message")
+        ai = entry.get("ai") or entry.get("ai_response")
         if user:
             history.append({"role": "user", "content": user})
         if ai:
             history.append({"role": "assistant", "content": ai})
-
-    return history
-
     return history
