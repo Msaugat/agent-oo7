@@ -208,7 +208,7 @@ def generate_response():
     ]
     
     if not warmed_up:
-        print(f"{Fore.YELLOW}♨️  Warming up...")
+        print(f"{Fore.YELLOW}  Warming up...")
         try:
             ollama.chat(model=MODEL, messages=[{"role": "user", "content": "hi"}])
             warmed_up = True
@@ -258,7 +258,7 @@ def generate_response():
         save_chat("", clean)  # Save last exchange
         
     except Exception as e:
-        print(f"{Fore.RED}\n❌ Error: {e}")
+        print(f"{Fore.RED}\n Error: {e}")
 
 # ═══════════════════════════════════════════════════════════
 # MAIN LOOP
